@@ -1,7 +1,10 @@
 import cron from 'node-cron';
 import axios from 'axios';
-import GoldRate from './models/GoldRate.js';
 import dotenv from 'dotenv';
+import GoldRate from './models/GoldRate.js';
+import SilverRate from './models/SilverRate.js';
+import PlatinumRate from './models/PlatinumRate.js';
+
 dotenv.config();
 
 const TOLA_IN_GRAMS = 8.0;
@@ -11,43 +14,48 @@ const KARAT_KEYS = {
   "18K": 'price_gram_18k',
 };
 
-export async function autoUpdateGoldRates() {
+async function fetchAndStoreRates(apiUrl, apiKey, materialType, model) {
   try {
-    // Fetch gold rates from the external API
-    const { data } = await axios.get(process.env.GOLD_API_URL, {
+    const { data } = await axios.get(apiUrl, {
       headers: {
-        'x-access-token': process.env.GOLD_API_KEY,
+        'x-access-token': apiKey,
         'Content-Type': 'application/json',
       },
     });
 
-    // Loop through the KARAT_KEYS to update rates
     for (const [karat, key] of Object.entries(KARAT_KEYS)) {
       const ratePerGram = data[key];
 
-      if (!ratePerGram || isNaN(ratePerGram)) {
-        continue; // Skip this iteration if the rate is invalid or missing
-      }
+      if (!ratePerGram || isNaN(ratePerGram)) continue;
 
       const ratePerPoun = ratePerGram * TOLA_IN_GRAMS;
 
       const newRate = {
-        karat: karat.toLowerCase(),  // Ensure karat is included for each new document
+        material: materialType.toLowerCase(), // gold, silver, platinum
+        karat: karat.toLowerCase(),
         ratePerGram: ratePerGram.toFixed(3),
         ratePerPoun: ratePerPoun.toFixed(3),
         updatedAt: new Date(),
       };
 
-      // Insert a new record for each update, not just update an existing one
-      const result = await GoldRate.create(newRate);  // Create a new document
+      await model.create(newRate);
     }
 
+    console.log(`✅ ${materialType} rates updated successfully`);
   } catch (error) {
-    console.error('❌ Gold rate update failed:', error.message);
-    // Optional: Log more detailed info for debugging
+    console.error(`❌ ${materialType} rate update failed:`, error.message);
     console.error('❌ Detailed Error:', error);
   }
 }
 
-// Schedule the cron job to run every hour
-cron.schedule('0 * * * *', autoUpdateGoldRates);
+async function autoUpdateAllRates() {
+  await fetchAndStoreRates(process.env.GOLD_API_URL, process.env.GOLD_API_KEY, 'Gold', GoldRate);
+  await fetchAndStoreRates(process.env.SILVER_API_URL, process.env.SILVER_API_KEY, 'Silver', SilverRate);
+  await fetchAndStoreRates(process.env.PLATINUM_API_URL, process.env.PLATINUM_API_KEY, 'Platinum', PlatinumRate);
+}
+
+// Schedule once daily at 8:00 AM
+cron.schedule('0 6 * * *', () => {
+  console.log('⏰ Running daily gold, silver, and platinum rate updates...');
+  autoUpdateAllRates();
+});

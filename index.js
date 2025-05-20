@@ -8,6 +8,9 @@ import errorHandler from './middleware/errorHandler.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import analyticsRoutes from "./routes/analyticsRoutes.js";
+import silverRateRoutes from './routes/silverRateRouter.js';
+import combinedRatesRoute from './routes/MetalRatesRoute.js';
+import platinumRateRoutes from './routes/platinumRateRoutes.js';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './docs/swagger.js';
 import './goldRateCron.js';
@@ -41,6 +44,10 @@ app.use('/api/auth',authRoutes);
 app.use("/api/analytics", analyticsRoutes);
 // Error handling
 app.use(errorHandler);
+
+app.use('/api/silver-rates', silverRateRoutes);
+app.use('/api/platinum-rates', platinumRateRoutes);
+app.use(combinedRatesRoute);
 
 // DB + Server
 const PORT = process.env.PORT || 5000;
