@@ -22,37 +22,75 @@ export const getCategoryById = async (req, res, next) => {
 };
 
 /** POST /api/categories */
+/** POST /api/categories/item */
 export const createCategory = async (req, res, next) => {
-    try {
-      // handle multipart/form-data
-      let imageUrl = null;
-      if (req.file) {
-        try {
-          imageUrl = await uploadBufferToCloudinary(req.file.buffer, 'categories');
-        } catch (uploadErr) {
-          return res.status(500).json({ message: 'Image upload failed', error: uploadErr.message });
-        }
+  try {
+    let imageUrl = null;
+
+    if (req.file) {
+      try {
+        imageUrl = await uploadBufferToCloudinary(req.file.buffer, 'categories');
+      } catch (uploadErr) {
+        return res.status(500).json({ message: 'Image upload failed', error: uploadErr.message });
       }
-  
-      const { name, description, bgClass, heightClass } = req.body;
-      if (!name) return res.status(400).json({ message: 'Name is required' });
-  
-      const existing = await Category.findOne({ name });
-      if (existing) return res.status(409).json({ message: 'Category already exists' });
-  
-      const cat = await Category.create({
-        name,
-        description,
-        bgClass,
-        heightClass,
-        imageUrl,
-      });
-      res.status(201).json(cat);
-    } catch (err) {
-      next(err);
     }
-  };
-  
+
+    const { id, columnClass, link, description, label, bg, heightClass } = req.body;
+
+    if (!link || !description || !label || !bg || !heightClass) {
+      return res.status(400).json({ message: 'All fields except image and columnClass are required' });
+    }
+
+    const newItem = {
+      link,
+      description,
+      label,
+      bg,
+      heightClass,
+      imageUrl,
+    };
+
+    if (id) {
+      // Update existing category
+      const updateFields = {
+        $push: { items: newItem },
+      };
+
+      if (columnClass) {
+        updateFields.$set = { columnClass };
+      }
+
+      const updatedCategory = await Category.findByIdAndUpdate(id, updateFields, {
+        new: true,
+        runValidators: true,
+      });
+
+      if (!updatedCategory) {
+        return res.status(404).json({ message: 'Category not found' });
+      }
+
+      return res.status(200).json(updatedCategory);
+    } else {
+      // Create a new category
+      if (!columnClass) {
+        return res.status(400).json({ message: 'columnClass is required when creating a new category' });
+      }
+
+      const newCategory = new Category({
+        columnClass,
+        items: [newItem],
+      });
+
+      const savedCategory = await newCategory.save();
+      return res.status(201).json(savedCategory);
+    }
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+
   /** PUT /api/categories/:id */
   export const updateCategory = async (req, res, next) => {
     try {
@@ -65,8 +103,8 @@ export const createCategory = async (req, res, next) => {
         }
       }
   
-      const { name, description, bgClass, heightClass } = req.body;
-      const updateFields = { name, description, bgClass, heightClass };
+      const { label,link, description, bg, heightClass } = req.body;
+      const updateFields = { label,link, description, bg, heightClass };
       if (imageUrl) updateFields.imageUrl = imageUrl;
   
       const cat = await Category.findByIdAndUpdate(

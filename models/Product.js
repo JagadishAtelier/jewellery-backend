@@ -7,7 +7,7 @@ const productSchema = new mongoose.Schema({
   productid: {type: String},
   images: [{ type: String }],
   video: { type: String },
-  categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
+  categoryId: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true }],
   weight: { type: Number, required: true },
   makingCostPercent: { type: Number, required: true },
   wastagePercent: { type: Number, required: true },

@@ -19,7 +19,7 @@ export const addProduct = async (req, res, next) => {
 
     
     // Ensure required fields are present
-    if (!name || !productid || !images || images.length === 0 || !categoryId) {
+    if (!name || !productid || !images || images.length === 0 || !categoryId || !Array.isArray(categoryId) || categoryId.length === 0) {
       return res.status(400).json({ message: 'Name, Product ID, Category, and at least one image are required.' });
     }
 
@@ -128,34 +128,43 @@ export const getProducts = async (req, res, next) => {
 export const getProductById = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    // 1. Try to get product by _id (Product ID)
     const product = await Product.findById(id);
+    if (product) {
+      const goldRate = await GoldRate.findOne({ karat: product.karat });
 
-    if (!product) {
-      return res.status(404).json({ message: 'Product not found' });
+      if (!goldRate || !goldRate.ratePerGram) {
+        return res.status(400).json({ message: 'Gold rate not set for this karat.' });
+      }
+
+      const parsedWeight = parseFloat(product.weight);
+      const parsedMaking = parseFloat(product.makingCostPercent);
+      const parsedWastage = parseFloat(product.wastagePercent);
+      const parsedRate = parseFloat(goldRate.ratePerGram);
+
+      const basePrice = parsedWeight * parsedRate;
+      const makingCost = (parsedMaking / 100) * basePrice;
+      const wastageCost = (parsedWastage / 100) * basePrice;
+      const totalPrice = Math.round(basePrice + makingCost + wastageCost);
+
+      return res.json({
+        ...product.toObject(),
+        makingCost: Math.round(makingCost),
+        wastageCost: Math.round(wastageCost),
+        price: totalPrice,
+        goldRatePerGram: parsedRate,
+      });
     }
 
-    const goldRate = await GoldRate.findOne({ karat: product.karat });
-    if (!goldRate || !goldRate.ratePerGram) {
-      return res.status(400).json({ message: 'Gold rate not set for this karat.' });
+    // 2. If not found, try to get by categoryId
+    const products = await Product.find({ categoryId: id });
+
+    if (!products || products.length === 0) {
+      return res.status(404).json({ message: 'No products found with this ID.' });
     }
 
-    const parsedWeight = parseFloat(product.weight);
-    const parsedMaking = parseFloat(product.makingCostPercent);
-    const parsedWastage = parseFloat(product.wastagePercent);
-    const parsedRate = parseFloat(goldRate.ratePerGram);
-
-    const basePrice = parsedWeight * parsedRate;
-    const makingCost = (parsedMaking / 100) * basePrice;
-    const wastageCost = (parsedWastage / 100) * basePrice;
-    const totalPrice = Math.round(basePrice + makingCost + wastageCost);
-
-    res.json({
-      ...product.toObject(),
-      makingCost: Math.round(makingCost),
-      wastageCost: Math.round(wastageCost),
-      price: totalPrice,
-      goldRatePerGram: parsedRate,
-    });
+    return res.json(products);
   } catch (err) {
     next(err);
   }
@@ -237,6 +246,9 @@ export const updateProductById = async (req, res, next) => {
       goldRatePerGram: Math.round(parsedRate),
     };
 
+    if (categoryId && Array.isArray(categoryId)) {
+      updateData.categoryId = categoryId;
+    }
     // Handle images (expecting an array)
     if (Array.isArray(images)) {
       updateData.images = images;  // If images are provided in the body, update them
