@@ -5,7 +5,7 @@ import {
     createCategory,
     updateCategory,
     deleteCategory,
-    updateCategoryOrder
+      getCategoryItems,
 } from '../controllers/categoryController.js';
 import upload from '../middleware/upload.js';
 
@@ -115,6 +115,7 @@ router
     .get(getCategories)
     .post(upload.single('image'), createCategory);
 
+    router.get('/items', getCategoryItems);
 /**
  * @swagger
  * /api/categories/{id}:
@@ -199,49 +200,5 @@ router
     .put(upload.single('image'), updateCategory)
     .delete(deleteCategory);
 
-/**
- * @swagger
- * /api/categories/order:
- *   put:
- *     summary: Update the order and layout of categories
- *     tags: [Categories]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: array
- *             items:
- *               type: object
- *               properties:
- *                 _id:
- *                   type: string
- *                   description: Category ID
- *                 position:
- *                   type: string
- *                   description: New layout position ID
- *                 heightClass:
- *                   type: string
- *                   description: New height class (optional)
- *                 columnClass:
- *                   type: string
- *                   description: New column class (optional)
- *     responses:
- *       200:
- *         description: Array of updated categories
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Category'
- *       400:
- *         description: Invalid request body
- *       404:
- *         description: Category not found
- *       500:
- *         description: Failed to update some categories
- */
-router.put('/order', updateCategoryOrder); 
 
 export default router;

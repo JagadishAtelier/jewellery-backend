@@ -184,3 +184,13 @@ export const updateCategoryOrder = async (req, res, next) => {
       next(err);
   }
 };
+
+export const getCategoryItems = async (req, res, next) => {
+  try {
+    const categories = await Category.find({}, { items: 1, _id: 0 }); // only return 'items' field
+    const allItems = categories.flatMap(cat => cat.items);
+    res.json(allItems);
+  } catch (err) {
+    next(err);
+  }
+};
