@@ -6,10 +6,14 @@ import {
     updateCategory,
     deleteCategory,
       getCategoryItems,
+      createCategoryStyleOnly,
 } from '../controllers/categoryController.js';
 import upload from '../middleware/upload.js';
 
 const router = express.Router();
+
+router.post('/style', createCategoryStyleOnly);
+
 
 /**
  * @swagger

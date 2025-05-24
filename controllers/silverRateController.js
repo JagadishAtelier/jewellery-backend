@@ -22,21 +22,34 @@ export const getSilverRates = async (req, res, next) => {
 export const updateSilverRate = async (req, res, next) => {
   try {
     const { karat, ratePerGram } = req.body;
-    if (!karat || !ratePerGram) return res.status(400).json({ message: 'karat and ratePerGram are required' });
+
+    const validKarats = ['18k', '22k', '24k'];
+    if (!karat || !ratePerGram)
+      return res.status(400).json({ message: 'karat and ratePerGram are required' });
+
+    if (!validKarats.includes(karat))
+      return res.status(400).json({ message: `Invalid karat. Only ${validKarats.join(', ')} allowed.` });
 
     const ratePerPoun = ratePerGram * TOLA_IN_GRAMS;
 
-    const updated = await SilverRate.findOneAndUpdate(
-      { karat },
-      { ratePerGram, ratePerPoun },
-      { new: true, upsert: true }
-    );
+    // 🔍 Find the most recently created document for this karat
+    const latestDoc = await SilverRate.findOne({ karat }).sort({ createdAt: -1 });
+
+    if (!latestDoc) {
+      return res.status(404).json({ message: `No existing ${karat} record found to update.` });
+    }
+
+    latestDoc.ratePerGram = ratePerGram;
+    latestDoc.ratePerPoun = ratePerPoun;
+
+    const updated = await latestDoc.save();
 
     res.json(updated);
   } catch (err) {
     next(err);
   }
 };
+
 
 export const getSilverRateHistory = async (req, res, next) => {
   try {

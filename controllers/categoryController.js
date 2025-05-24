@@ -89,6 +89,26 @@ export const createCategory = async (req, res, next) => {
   }
 };
 
+//POST /api/categories/style
+export const createCategoryStyleOnly = async (req, res, next) => {
+  try {
+    const { columnClass } = req.body;
+
+    if (!columnClass) {
+      return res.status(400).json({ message: 'columnClass is required' });
+    }
+
+    const newCategory = new Category({
+      columnClass,
+      items: [],
+    });
+
+    const savedCategory = await newCategory.save();
+    return res.status(201).json(savedCategory);
+  } catch (err) {
+    next(err);
+  }
+};
 
 
   /** PUT /api/categories/:id */
@@ -131,59 +151,7 @@ export const deleteCategory = async (req, res, next) => {
   }
 };
 
-/** PUT /api/categories/order */
-export const updateCategoryOrder = async (req, res, next) => {
-  try {
-      const updates = req.body;
 
-      if (!Array.isArray(updates)) {
-          return res.status(400).json({ message: 'Invalid request body. Expected an array of updates.' });
-      }
-
-      const updatePromises = updates.map(async (update) => {
-          if (!update._id || typeof update.position !== 'string') {
-              return Promise.reject({ statusCode: 400, message: 'Each update must contain _id and position.' });
-          }
-
-          const updateFields = { position: update.position };
-          if (typeof update.heightClass === 'string') {
-              updateFields.heightClass = update.heightClass;
-          }
-          if (typeof update.columnClass === 'string') {
-              updateFields.columnClass = update.columnClass;
-          }
-
-          const category = await Category.findByIdAndUpdate(
-              update._id,
-              updateFields,
-              { new: true, runValidators: true }
-          );
-          if (!category) {
-              return Promise.reject({ statusCode: 404, message: `Category not found with id: ${update._id}` });
-          }
-          return category;
-      });
-
-      const updatedCategories = await Promise.allSettled(updatePromises);
-
-      const successfulUpdates = updatedCategories.filter(result => result.status === 'fulfilled').map(result => result.value);
-      const failedUpdates = updatedCategories.filter(result => result.status === 'rejected').map(result => result.reason);
-
-      if (failedUpdates.length > 0) {
-          const firstError = failedUpdates[0];
-          return res.status(firstError.statusCode || 500).json({
-              message: 'Failed to update some categories.',
-              errors: failedUpdates.map(err => ({ id: err.message?.split(' ')[5], message: err.message })),
-              successfulUpdates: successfulUpdates.map(cat => cat._id)
-          });
-      }
-
-      res.json(successfulUpdates);
-
-  } catch (err) {
-      next(err);
-  }
-};
 
 export const getCategoryItems = async (req, res, next) => {
   try {
