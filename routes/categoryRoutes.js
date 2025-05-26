@@ -7,6 +7,8 @@ import {
     deleteCategory,
       getCategoryItems,
       createCategoryStyleOnly,
+      deleteCategoryItem,
+      updateCategoryItem,
 } from '../controllers/categoryController.js';
 import upload from '../middleware/upload.js';
 
@@ -14,7 +16,8 @@ const router = express.Router();
 
 router.post('/style', createCategoryStyleOnly);
 
-
+router.delete('/:categoryId/items/:itemId',deleteCategoryItem)
+router.put('/:categoryId/items/:itemId', upload.single('image'), updateCategoryItem);
 /**
  * @swagger
  * tags:
